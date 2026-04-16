@@ -1,0 +1,509 @@
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* DARK MODE COLORS */
+  --color-background-primary: #0f1115;
+  --color-background-secondary: #1a1d24;
+
+  --color-text-primary: #e6e6e6;
+  --color-text-secondary: #9aa3b2;
+
+  --color-border-secondary: #2a2f3a;
+  --color-border-tertiary: #232833;
+
+  --border-radius-lg: 12px;
+  --border-radius-md: 8px;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
+#game { min-height: 520px; position: relative; overflow: hidden; }
+.screen { display: none; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1.5rem; min-height: 520px; }
+.screen.active { display: flex; }
+
+#start-screen { text-align: center; gap: 1.5rem; }
+#start-screen h1 { font-size: 28px; font-weight: 500; color: var(--color-text-primary); }
+#start-screen p { font-size: 15px; color: var(--color-text-secondary); max-width: 420px; line-height: 1.6; }
+#start-btn { font-size: 15px; padding: 12px 32px; border-radius: var(--border-radius-lg); cursor: pointer; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-family: var(--font-sans); transition: background 0.15s; }
+#start-btn:hover { background: var(--color-background-secondary); }
+
+#question-screen { gap: 0; width: 100%; }
+.progress-bar-wrap { width: 100%; max-width: 560px; margin-bottom: 1.5rem; }
+.progress-label { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; }
+.progress-bar { height: 4px; background: var(--color-background-secondary); border-radius: 2px; width: 100%; }
+.progress-fill { height: 4px; background: #534AB7; border-radius: 2px; transition: width 0.4s ease; }
+.question-label { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 0.5rem; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500; }
+.question-text { font-size: 20px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 2rem; text-align: center; max-width: 480px; line-height: 1.4; }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; max-width: 560px; }
+.choice-btn { padding: 1.25rem 1rem; border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s; font-family: var(--font-sans); }
+.choice-btn:hover {
+  border-color: #7c72ff;
+  background: #e6e6e6;   /* light background */
+  color: #000;           /* 👈 makes ALL text inside turn black */
+}
+.choice-btn:hover .choice-title,
+.choice-btn:hover .choice-label,
+.choice-btn:hover .choice-gain {
+  color: #000;
+}
+#start-btn:hover,
+#restart-btn:hover {
+  background: #e6e6e6;
+  color: #000;
+
+}
+.choice-btn:hover { border-color: #534AB7; background: #EEEDFE; }
+.choice-label { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; }
+.choice-title { font-size: 16px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+.choice-gain { font-size: 13px; color: #0F6E56; }
+.choice-btn:hover .choice-gain {
+  color: #0F6E56; /* keep original green */
+}
+#game {
+  min-height: 100vh;          /* full screen height */
+  width: 100%;
+  max-width: 1100px;          /* 🔥 increase from default */
+  margin: 0 auto;             /* center horizontally */
+  padding: 2rem;
+}
+.screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-height: 100vh;          /* full viewport height */
+  width: 100%;
+}
+.progress-bar-wrap,
+.choices,
+.results-cols,
+.totals,
+.econ-note {
+  max-width: 900px;   /* 🔥 bigger content area */
+  width: 100%;
+}
+.choices {
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;   /* more spacing */
+}
+
+.choice-btn {
+  padding: 2rem 1.5rem;   /* bigger buttons */
+  font-size: 16px;
+}
+.question-text {
+  font-size: 26px;
+  max-width: 700px;
+}
+
+#start-screen h1 {
+  font-size: 36px;
+}
+@media (max-width: 768px) {
+  .choices {
+    grid-template-columns: 1fr; /* stack on mobile */
+  }
+
+  #game {
+    padding: 1rem;
+  }
+}
+#cost-overlay {
+  position: fixed;   /* 🔥 key change */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;     /* 🔥 full screen */
+
+  background: #7a1f1f;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 2rem;
+  text-align: center;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 9999;     /* 🔥 ensure it's on top */
+}
+
+#cost-overlay {
+  background: radial-gradient(circle at center, #8f2d2d, #5a1717);
+}
+#cost-overlay.show { opacity: 1; pointer-events: auto; }
+#cost-overlay h2 { font-size: 18px; font-weight: 500; color: #FAECE7; margin-bottom: 0.75rem; }
+#cost-title { font-size: 22px; font-weight: 500; color: #FCEBEB; margin-bottom: 0.5rem; }
+#cost-desc { font-size: 15px; color: #F5C4B3; max-width: 400px; line-height: 1.6; margin-bottom: 1rem; }
+#cost-amount { font-size: 28px; font-weight: 500; color: #FCEBEB; }
+
+#results-screen { gap: 1rem; width: 100%; }
+#results-screen h2 { font-size: 24px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.5rem; }
+.results-subtitle { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
+.results-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; max-width: 600px; }
+.results-col { border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); padding: 1rem; background: var(--color-background-primary); }
+.results-col h3 { font-size: 14px; font-weight: 500; margin-bottom: 12px; }
+.results-col.gains h3 { color: #0F6E56; }
+.results-col.losses h3 { color: #A32D2D; }
+.result-item { font-size: 13px; color: var(--color-text-secondary); padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); line-height: 1.4; }
+.result-item:last-child { border-bottom: none; }
+.result-item strong { display: block; color: var(--color-text-primary); font-weight: 500; font-size: 13px; }
+.totals { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; max-width: 600px; }
+.total-card { border-radius: var(--border-radius-md); padding: 1rem; text-align: center; }
+.total-card.gain { background: #E1F5EE; }
+.total-card.loss { background: #FCEBEB; }
+.total-label { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+.total-card.gain .total-label { color: #0F6E56; }
+.total-card.loss .total-label { color: #A32D2D; }
+.total-val { font-size: 22px; font-weight: 500; }
+.total-card.gain .total-val { color: #085041; }
+.total-card.loss .total-val { color: #791F1F; }
+.econ-note { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 1rem 1.25rem; max-width: 600px; width: 100%; }
+.econ-note p { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+.econ-note strong { color: var(--color-text-primary); font-weight: 500; }
+#restart-btn { font-size: 14px; padding: 10px 24px; border-radius: var(--border-radius-lg); cursor: pointer; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-family: var(--font-sans); margin-top: 0.5rem; }
+#restart-btn:hover { background: var(--color-background-secondary); }
+#credit {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  opacity: 0.8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  position: fixed;
+}
+</style>
+
+<div id="game">
+  <div id="credit">created by Richard Amador</div>
+  <div id="start-screen" class="screen active">
+    <h1>This or That?</h1>
+    <p>Every choice you make has an <strong>opportunity cost</strong> — the value of what you give up. Make 20 real-life decisions, then see what you gained vs. what you left on the table.</p>
+    <button id="start-btn">Start the game</button>
+  </div>
+
+  <div id="question-screen" class="screen">
+    <div class="progress-bar-wrap">
+      <div class="progress-label"><span id="q-num">1</span> of 20</div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:5%"></div></div>
+    </div>
+    <div class="question-label">choose one</div>
+    <div class="question-text" id="q-text"></div>
+    <div class="choices">
+      <div class="choice-btn" id="btn-a" onclick="choose(0)">
+        <div class="choice-label">Option A</div>
+        <div class="choice-title" id="a-title"></div>
+        <div class="choice-gain" id="a-gain"></div>
+      </div>
+      <div class="choice-btn" id="btn-b" onclick="choose(1)">
+        <div class="choice-label">Option B</div>
+        <div class="choice-title" id="b-title"></div>
+        <div class="choice-gain" id="b-gain"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="cost-overlay">
+    <h2>Opportunity Cost</h2>
+    <div id="cost-title"></div>
+    <div id="cost-desc"></div>
+    <div id="cost-amount"></div>
+  </div>
+
+  <div id="results-screen" class="screen">
+    <h2>Your scorecard</h2>
+    <p class="results-subtitle">Every choice had a price. Here's what you traded away — and what you got.</p>
+    <div class="totals">
+      <div class="total-card gain">
+        <div class="total-label">total gained</div>
+        <div class="total-val" id="total-gain">$0</div>
+      </div>
+      <div class="total-card loss">
+        <div class="total-label">opportunity cost</div>
+        <div class="total-val" id="total-loss">$0</div>
+      </div>
+    </div>
+    <div class="results-cols">
+      <div class="results-col gains">
+        <h3>What you gained</h3>
+        <div id="gains-list"></div>
+      </div>
+      <div class="results-col losses">
+        <h3>What you gave up</h3>
+        <div id="losses-list"></div>
+      </div>
+    </div>
+    <div class="econ-note">
+      <p><strong>The takeaway:</strong> Opportunity cost isn't just money: it's time, relationships, experience, and future potential. Economists measure it as the <em>next best alternative</em> you didn't choose. There's no "wrong" choice here,  only trade-offs.</p>
+    </div>
+    <button id="restart-btn">Play again</button>
+  </div>
+</div>
+
+<script>
+const questions = [
+  {
+    text: "Friday night — what do you do?",
+    a: { title: "Go to the movies", gain: "Fun night out (+$0, -$15 ticket)", gainVal: 0, costVal: 15 },
+    b: { title: "Pick up an extra shift", gain: "Earn $80", gainVal: 80, costVal: 0 },
+    costA: { title: "You skipped earning $80", desc: "The movie was fun, but you gave up a shift that would have paid $80 — plus you spent $15 on the ticket.", amount: "-$95 in opportunity cost" },
+    costB: { title: "You missed a night with friends", desc: "You earned $80, but you skipped the social connection. Relationships and mental breaks also have value.", amount: "Cost: less time with friends, lower social well-being" }
+  },
+  {
+    text: "A $500 bonus — what do you do with it?",
+    a: { title: "Spend it on new clothes", gain: "Fresh wardrobe", gainVal: 0, costVal: 500 },
+    b: { title: "Put it in savings", gain: "Earn ~$25/yr interest", gainVal: 25, costVal: 0 },
+    costA: { title: "You forfeited future earnings", desc: "That $500 invested for 10 years at 5% becomes ~$814. Spending it now cost you over $300 in future value.", amount: "-$314 in future value (approx.)" },
+    costB: { title: "You gave up immediate satisfaction", desc: "Savings grow, but you postponed enjoying your money now. Delayed gratification has a real emotional cost too.", amount: "Cost: $500 of present-day enjoyment" }
+  },
+  {
+    text: "Summer break — big decision.",
+    a: { title: "Get a summer job", gain: "Earn $2,400", gainVal: 2400, costVal: 0 },
+    b: { title: "Take a free internship", gain: "Resume experience + network", gainVal: 0, costVal: 2400 },
+    costA: { title: "You gave up career experience", desc: "The $2,400 is real, but the unpaid internship could have led to a job worth $10K+ more per year. Human capital matters.", amount: "Cost: career development & network" },
+    costB: { title: "You gave up $2,400 in wages", desc: "The experience is valuable, but you gave up real income that could cover rent, savings, or debt repayment.", amount: "-$2,400 in immediate wages" }
+  },
+  {
+    text: "You have 2 hours before class. What do you do?",
+    a: { title: "Study for the test", gain: "Better grade (+GPA)", gainVal: 0, costVal: 0 },
+    b: { title: "Scroll social media", gain: "Entertainment & relaxation", gainVal: 0, costVal: 0 },
+    costA: { title: "You missed rest & relaxation", desc: "Grinding is smart, but rest has real value. Burnout reduces long-term productivity. Mental recovery matters.", amount: "Cost: 2 hours of mental recharge" },
+    costB: { title: "You gave up GPA points", desc: "A lower test score could affect scholarships, college apps, or your future salary. 2 hours of studying has huge potential return.", amount: "Cost: potential GPA boost & future opportunities" }
+  },
+  {
+    text: "Your friend needs a favor on your day off.",
+    a: { title: "Help them move apartments", gain: "Stronger friendship", gainVal: 0, costVal: 0 },
+    b: { title: "Relax and recharge", gain: "Full rest day", gainVal: 0, costVal: 0 },
+    costA: { title: "You gave up your only rest day", desc: "Social capital is real, but rest and recovery affect your health, mood, and productivity all week.", amount: "Cost: a full day of personal rest" },
+    costB: { title: "You missed building social capital", desc: "Friendships are built through reciprocity. Saying no too often can erode your support network over time.", amount: "Cost: trust & relationship depth" }
+  },
+  {
+    text: "College choice — what matters more?",
+    a: { title: "Attend a prestigious school (high tuition)", gain: "Brand name + network", gainVal: 0, costVal: 120000 },
+    b: { title: "Attend community college first", gain: "Save ~$30K, transfer later", gainVal: 60000, costVal: 0 },
+    costA: { title: "You took on $120K in debt", desc: "Prestigious schools can boost earnings, but $120K in loans accrues interest. That debt could take 10+ years to pay off.", amount: "-$120,000+ in student debt" },
+    costB: { title: "You gave up the full experience", desc: "Community college saves money but may mean fewer networking opportunities, clubs, and the traditional 4-year experience.", amount: "Cost: campus experience & immediate network" }
+  },
+  {
+    text: "You can learn a new skill — which one?",
+    a: { title: "Learn to code", gain: "High-demand job skill", gainVal: 0, costVal: 0 },
+    b: { title: "Learn a new language", gain: "Cultural access + travel", gainVal: 0, costVal: 0 },
+    costA: { title: "You gave up global mobility", desc: "Coding pays well, but bilingual workers earn up to 20% more in many fields and unlock international opportunities.", amount: "Cost: cultural fluency & international access" },
+    costB: { title: "You gave up tech earning potential", desc: "Coding skills can add $20K–$50K to your annual salary. That's a significant trade in today's labor market.", amount: "Cost: up to $250K/yr in tech salary" }
+  },
+  {
+    text: "You get a job offer — do you take it?",
+    a: { title: "Accept the job (decent pay)", gain: "Stable income now", gainVal: 45000, costVal: 0 },
+    b: { title: "Hold out for a better offer", gain: "Possible higher salary", gainVal: 0, costVal: 45000 },
+    costA: { title: "You gave up the higher offer", desc: "The job is fine, but waiting could have netted $10K–$20K more. Salary compounding means early underpayment adds up over a career.", amount: "Cost: potential $10–20K more per year" },
+    costB: { title: "You gave up 6 months of income", desc: "Job searching takes time. Six months without pay at $45K/yr means you gave up $22,500 while waiting.", amount: "-$22,500 in foregone wages during search" }
+  },
+  {
+    text: "Lunchtime — quick decision.",
+    a: { title: "Buy lunch ($12 every day)", gain: "Convenient, tasty", gainVal: 0, costVal: 3120 },
+    b: { title: "Meal prep at home ($3/day)", gain: "Save $2,340/year", gainVal: 2340, costVal: 0 },
+    costA: { title: "You spent $2,340 extra per year", desc: "That $9/day difference adds up to $2,340 annually — or $23,400 over a decade. Invested at 7%, it becomes over $32,000.", amount: "-$2,340/year vs. meal prepping" },
+    costB: { title: "You spent time meal prepping", desc: "Meal prep saves money but costs 2–3 hours per week. That's 100+ hours a year of your time.", amount: "Cost: 100+ hours of personal time per year" }
+  },
+  {
+    text: "Transportation choice.",
+    a: { title: "Buy a car ($400/mo total cost)", gain: "Convenience & freedom", gainVal: 0, costVal: 4800 },
+    b: { title: "Use public transit ($80/mo)", gain: "Save $3,840/year", gainVal: 3840, costVal: 0 },
+    costA: { title: "You spent an extra $3,840/year", desc: "Cars give freedom but cost $4,800+/yr. That's money that could go to savings, debt, or experiences.", amount: "-$3,840/year vs. transit" },
+    costB: { title: "You gave up time and convenience", desc: "Transit can add 30–60 minutes to your daily commute — that's 100–200 hours per year of lost time.", amount: "Cost: 100–200 hours/year of commute time" }
+  },
+  {
+    text: "Side hustle opportunity.",
+    a: { title: "Start a small business", gain: "Potential big upside", gainVal: 0, costVal: 0 },
+    b: { title: "Pick up freelance gigs", gain: "Reliable extra $500/mo", gainVal: 6000, costVal: 0 },
+    costA: { title: "Risk vs. guaranteed income", desc: "Startups take 2–3 years before profit. You gave up ~$18K in guaranteed freelance earnings while building.", amount: "Cost: $18,000+ in foregone freelance income" },
+    costB: { title: "You gave up potential equity", desc: "A successful business could be worth $500K+. Freelance income is linear — you trade time for money, not equity.", amount: "Cost: potential equity & long-term wealth" }
+  },
+  {
+    text: "Health decision.",
+    a: { title: "Gym membership ($50/mo)", gain: "Better long-term health", gainVal: 0, costVal: 600 },
+    b: { title: "Skip the gym, save the money", gain: "Save $600/year", gainVal: 600, costVal: 0 },
+    costA: { title: "You spent $600 on the gym", desc: "The gym costs $600/yr — but poor health can cost $10K+ in medical bills later. This might be the best ROI of your life.", amount: "-$600/year (but huge future health return)" },
+    costB: { title: "You skipped long-term health investment", desc: "Skipping exercise raises risks for chronic disease. Medical care, lost productivity, and quality of life all carry massive economic costs.", amount: "Cost: future medical costs & quality of life" }
+  },
+  {
+    text: "Social media time.",
+    a: { title: "2 hrs/day on social media", gain: "Entertainment, FOMO avoided", gainVal: 0, costVal: 0 },
+    b: { title: "Use that time to read or learn", gain: "1 book/week = 52/year", gainVal: 0, costVal: 0 },
+    costA: { title: "You gave up 700 hours of growth", desc: "2 hrs/day × 365 = 730 hours. That's enough time to learn a new language, skill, or finish 50+ books per year.", amount: "Cost: 730 hours of learning time per year" },
+    costB: { title: "You gave up social connection", desc: "Social media, used well, maintains relationships and awareness. Total disconnection can have social and professional costs.", amount: "Cost: social awareness & connection" }
+  },
+  {
+    text: "Living situation.",
+    a: { title: "Live alone (extra $600/mo)", gain: "Privacy & independence", gainVal: 0, costVal: 7200 },
+    b: { title: "Get a roommate", gain: "Save $7,200/year", gainVal: 7200, costVal: 0 },
+    costA: { title: "You paid $7,200 for solitude", desc: "$7,200/year invested at 7% for 10 years = $14,000+. Loving your space is real — but the financial cost is significant.", amount: "-$7,200/year vs. having a roommate" },
+    costB: { title: "You gave up personal space", desc: "Roommates save money but create friction — reduced privacy, shared chores, potential conflict. These have real emotional costs.", amount: "Cost: privacy, autonomy, peace of mind" }
+  },
+  {
+    text: "Vacation time.",
+    a: { title: "Take a big international trip", gain: "Life experience, memories", gainVal: 0, costVal: 3000 },
+    b: { title: "Stay home & save the money", gain: "Save $3,000", gainVal: 3000, costVal: 0 },
+    costA: { title: "You spent $3,000", desc: "Travel builds perspective, creativity, and cultural intelligence — but $3,000 invested grows. Research shows experiences bring more lasting happiness than things.", amount: "-$3,000 in savings" },
+    costB: { title: "You gave up life experience", desc: "The money is nice, but studies show people regret the experiences they skipped more than the money they spent. Memories compound too.", amount: "Cost: experiences, memories, and personal growth" }
+  },
+  {
+    text: "What to do with free time after work?",
+    a: { title: "Binge a TV series", gain: "Relaxation & escapism", gainVal: 0, costVal: 0 },
+    b: { title: "Work on a creative side project", gain: "Portfolio & potential income", gainVal: 0, costVal: 0 },
+    costA: { title: "You gave up creative output", desc: "3 hours/night × 5 nights = 15 hrs/week. That's enough to build a portfolio, launch a product, or develop a skill that compounds over years.", amount: "Cost: 780 hours of creative potential per year" },
+    costB: { title: "You gave up rest and entertainment", desc: "Burnout is real. Rest, play, and mental breaks aren't laziness — they restore cognitive function and creativity.", amount: "Cost: rest, mental recovery, and enjoyment" }
+  },
+  {
+    text: "Credit card offer arrives in the mail.",
+    a: { title: "Open it & use it freely", gain: "Buy things now, pay later", gainVal: 0, costVal: 0 },
+    b: { title: "Cut it up, stick to debit", gain: "Zero interest charges", gainVal: 0, costVal: 0 },
+    costA: { title: "You could pay 20%+ interest", desc: "Credit card APRs average 20–27%. Carrying a $1,000 balance costs $200+ per year — just in interest. Debt compounds against you.", amount: "Cost: up to $270/year in interest per $1,000 owed" },
+    costB: { title: "You gave up credit building", desc: "Responsible credit card use builds your credit score. A poor score can cost you thousands in higher mortgage and car loan rates.", amount: "Cost: credit score growth & future loan savings" }
+  },
+  {
+    text: "Your employer offers a 401(k) match.",
+    a: { title: "Contribute enough to get full match", gain: "Free $2,000+/year from employer", gainVal: 2000, costVal: 0 },
+    b: { title: "Skip it — need the cash now", gain: "More take-home pay now", gainVal: 0, costVal: 2000 },
+    costA: { title: "You reduced your paycheck", desc: "Contributing feels like a sacrifice now, but you kept the $2K match. That match alone, invested 30 years, becomes $15,000+.", amount: "-$100–200/month from paycheck, but +$2,000 free money" },
+    costB: { title: "You left free money on the table", desc: "Not taking the employer match is like refusing a $2,000 raise. That money invested for 30 years at 7% = ~$15,000 lost.", amount: "-$15,000+ in future retirement savings" }
+  },
+  {
+    text: "A friend invites you to a networking event.",
+    a: { title: "Go — meet new people", gain: "New connections & opportunities", gainVal: 0, costVal: 0 },
+    b: { title: "Skip it — too tired", gain: "Rest and recharge", gainVal: 0, costVal: 0 },
+    costA: { title: "You gave up rest time", desc: "Networking has value, but constantly pushing when exhausted leads to poor impressions and burnout. Rest is a real resource.", amount: "Cost: recovery time and energy" },
+    costB: { title: "You missed a potential connection", desc: "Studies show 70–85% of jobs are filled through networking. One skipped event could mean missing the contact that changes your career.", amount: "Cost: unknown — the value of the connection you didn't make" }
+  },
+  {
+    text: "Big life decision — where to live?",
+    a: { title: "Move to a high-cost city (NYC, LA)", gain: "Higher salaries & opportunity", gainVal: 20000, costVal: 24000 },
+    b: { title: "Stay in your hometown", gain: "Lower cost, close to family", gainVal: 0, costVal: 0 },
+    costA: { title: "High cost of living eats your raise", desc: "NYC/LA average $2,000+/mo rent. Your salary might be $20K higher — but $24K more in expenses means you're actually behind.", amount: "Net cost: -$4,000/year after expenses" },
+    costB: { title: "You gave up career acceleration", desc: "Many industries are concentrated in big cities. Staying home may limit your network, promotions, and earning potential over a career.", amount: "Cost: career growth, network, and earning trajectory" }
+  }
+];
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+let current = 0;
+let gains = [];
+let losses = [];
+
+function showQuestion() {
+  const q = questions[current];
+  document.getElementById('q-num').textContent = current + 1;
+  document.getElementById('progress-fill').style.width = ((current + 1) / 20 * 100) + '%';
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('a-title').textContent = q.a.title;
+  document.getElementById('a-gain').textContent = q.a.gain;
+  document.getElementById('b-title').textContent = q.b.title;
+  document.getElementById('b-gain').textContent = q.b.gain;
+}
+
+function choose(option) {
+  const q = questions[current];
+  const chosen = option === 0 ? q.a : q.b;
+  const cost = option === 0 ? q.costA : q.costB;
+  const notChosen = option === 0 ? q.b : q.a;
+
+  gains.push({ question: q.text, choice: chosen.title, gain: chosen.gain });
+  losses.push({ question: q.text, missed: notChosen.title, cost: cost.amount });
+
+  const overlay = document.getElementById('cost-overlay');
+  document.getElementById('cost-title').textContent = cost.title;
+  document.getElementById('cost-desc').textContent = cost.desc;
+  document.getElementById('cost-amount').textContent = cost.amount;
+
+  overlay.classList.add('show');
+
+  setTimeout(() => {
+    overlay.style.transition = 'opacity 1.2s ease';
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      overlay.style.opacity = '';
+      overlay.style.transition = 'opacity 0.3s ease';
+      current++;
+      if (current >= 20) {
+        showResults();
+      } else {
+        showQuestion();
+      }
+    }, 1200);
+  }, 7500);
+}
+
+function showResults() {
+  document.getElementById('question-screen').classList.remove('active');
+  document.getElementById('results-screen').classList.add('active');
+
+  let gainTotal = 0;
+  let lossTotal = 0;
+  questions.forEach((q, i) => {
+    const choiceIdx = gains[i] ? (gains[i].choice === q.a.title ? 0 : 1) : 0;
+    const chosen = choiceIdx === 0 ? q.a : q.b;
+    gainTotal += chosen.gainVal || 0;
+    lossTotal += chosen.costVal || 0;
+  });
+
+  document.getElementById('total-gain').textContent = '$' + gainTotal.toLocaleString();
+  document.getElementById('total-loss').textContent = '$' + lossTotal.toLocaleString();
+
+  const gainsList = document.getElementById('gains-list');
+  const lossesList = document.getElementById('losses-list');
+  gainsList.innerHTML = '';
+  lossesList.innerHTML = '';
+
+  gains.forEach((g, i) => {
+    const div = document.createElement('div');
+    div.className = 'result-item';
+    div.innerHTML = '<strong>' + g.choice + '</strong>' + g.gain;
+    gainsList.appendChild(div);
+  });
+
+  losses.forEach((l, i) => {
+    const div = document.createElement('div');
+    div.className = 'result-item';
+    div.innerHTML = '<strong>Missed: ' + l.missed + '</strong>' + l.cost;
+    lossesList.appendChild(div);
+  });
+}
+
+document.getElementById('start-btn').onclick = () => {
+  shuffle(questions); // 🔥 randomize order
+
+  document.getElementById('start-screen').classList.remove('active');
+  document.getElementById('question-screen').classList.add('active');
+  showQuestion();
+};
+
+document.getElementById('restart-btn').onclick = () => {
+  current = 0;
+  gains = [];
+  losses = [];
+
+  shuffle(questions); // 🔥 reshuffle again
+
+  document.getElementById('results-screen').classList.remove('active');
+  document.getElementById('question-screen').classList.add('active');
+  showQuestion();
+};
+</script>
